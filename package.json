@@ -1,0 +1,29 @@
+{
+  "name": "cube-solve",
+  "private": true,
+  "version": "1.0.0",
+  "description": "An immersive, scroll-driven 3D guide to solving the Rubik's Cube with three methods.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "solves": "node scripts/generate-solves.ts",
+    "test": "node scripts/test-cube.ts && node scripts/verify-algs.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "lenis": "^1.3.26",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@types/three": "^0.186.0",
+    "puppeteer-core": "^25.12.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}

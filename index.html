@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Solve the Cube — an interactive 3D guide</title>
+    <meta
+      name="description"
+      content="Learn to solve the Rubik's Cube with three methods — Beginner, CFOP and ZZ — in an immersive, scroll-driven 3D guide. Every move shown in real time."
+    />
+    <meta name="theme-color" content="#07080b" />
+    <meta property="og:title" content="Solve the Cube — an interactive 3D guide" />
+    <meta property="og:description" content="Three methods, every move in real-time 3D. Scroll, and the cube shows you how." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="loader" id="loader" role="status" aria-live="polite">
+      <div class="loader__inner">
+        <div class="loader__grid" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <p class="loader__text"><span id="loader-pct">0</span><span class="loader__unit">%</span></p>
+        <p class="loader__label">Assembling 26 pieces</p>
+      </div>
+    </div>
+
+    <canvas id="gl" aria-hidden="true"></canvas>
+    <svg id="callout-lines" aria-hidden="true"></svg>
+    <div id="callout-labels" aria-hidden="true"></div>
+    <div class="move-hud" id="move-hud" aria-hidden="true">
+      <span class="move-hud__token" id="move-hud-token"></span>
+      <span class="move-hud__desc" id="move-hud-desc"></span>
+    </div>
+
+    <header class="nav" id="nav">
+      <a class="brand" href="#top" aria-label="Back to top">
+        <span class="brand__mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand__word">Solve<em>/</em>the&nbsp;Cube</span>
+      </a>
+      <div class="tabs" role="tablist" aria-label="Solving method">
+        <span class="tabs__pill" aria-hidden="true"></span>
+      </div>
+      <div class="nav__right">
+        <button class="chip-btn" id="nav-shuffle" type="button" aria-label="New scramble">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 7h9l-2.5-2.5M16 13H7l2.5 2.5" /></svg>
+          <span>Shuffle</span>
+        </button>
+      </div>
+      <div class="nav__progress" aria-hidden="true"><i id="nav-progress"></i></div>
+    </header>
+
+    <main id="main">
+      <!-- ─────────────────────────────── Hero -->
+      <section class="hero" id="top" data-pose="hero">
+        <div class="hero__copy">
+          <p class="eyebrow reveal">An interactive field guide to the 3×3</p>
+          <h1 class="display reveal" style="--d: 1">Every scramble<br />has a way <em>home.</em></h1>
+          <p class="lede reveal" style="--d: 2">
+            Learn the Rubik’s Cube three ways, from the classic beginner method to the techniques speedcubers use. Scroll, and
+            the cube shows you every move.
+          </p>
+          <div class="hero__cta reveal" style="--d: 3">
+            <a class="btn btn--primary" href="#methods">Choose a method</a>
+            <a class="btn btn--ghost" href="#anatomy">Start from zero</a>
+          </div>
+        </div>
+        <dl class="hero__stats reveal" style="--d: 4">
+          <div>
+            <dt class="mono">43,252,003,274,489,856,000</dt>
+            <dd>possible positions</dd>
+          </div>
+          <div>
+            <dt class="mono">20</dt>
+            <dd>moves always suffice — “God’s number”</dd>
+          </div>
+          <div>
+            <dt class="mono">1</dt>
+            <dd>solved state</dd>
+          </div>
+        </dl>
+        <a class="scroll-cue" href="#anatomy" aria-label="Scroll to begin"><span>Scroll</span><i></i></a>
+      </section>
+
+      <!-- ─────────────────────────────── Anatomy -->
+      <section class="chapter" id="anatomy" data-chapter="anatomy" style="--beats: 5">
+        <div class="chapter__sticky">
+          <div class="chapter__copy">
+            <p class="eyebrow">01 — Anatomy</p>
+            <h2 class="headline">Twenty-six pieces.<br /><em>Three</em> kinds.</h2>
+            <div class="beats">
+              <p class="beat" data-beat="0">
+                Take it apart and it’s simpler than it looks. A plastic core holds 26 visible pieces, and each kind moves by
+                its own rules.
+              </p>
+              <p class="beat" data-beat="1">
+                <b class="count">6 centres.</b> Fixed to the core, they only ever spin in place, so a centre’s colour
+                <em>is</em> its face’s colour. White always sits opposite yellow.
+              </p>
+              <p class="beat" data-beat="2">
+                <b class="count">12 edges.</b> Two stickers each, always between two centres. An edge can be in the right place
+                and still be flipped.
+              </p>
+              <p class="beat" data-beat="3">
+                <b class="count">8 corners.</b> Three stickers each. A corner can sit in its home yet be twisted one of three
+                ways.
+              </p>
+              <p class="beat" data-beat="4">
+                Solving isn’t about colours. It’s about putting each <b>piece</b> back where it belongs, without undoing the
+                ones you’ve already placed.
+              </p>
+            </div>
+            <div class="beat-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────── Notation -->
+      <section class="chapter" id="notation" data-chapter="notation" style="--beats: 4">
+        <div class="chapter__sticky">
+          <div class="chapter__copy">
+            <p class="eyebrow">02 — Notation</p>
+            <h2 class="headline">Every move is<br /><em>a letter.</em></h2>
+            <div class="beats">
+              <p class="beat" data-beat="0">
+                Each face is named for where it sits: <b>U</b>p, <b>D</b>own, <b>L</b>eft, <b>R</b>ight, <b>F</b>ront and
+                <b>B</b>ack.
+              </p>
+              <p class="beat" data-beat="1">
+                A letter on its own is a quarter turn <b>clockwise</b>, as if you were looking straight at that face.
+                <b>R</b> turns the right face up and away from you.
+              </p>
+              <p class="beat" data-beat="2">
+                Add a prime, <b class="mono">R′</b>, to turn counter-clockwise, or a 2, <b class="mono">R2</b>, for a half
+                turn. An algorithm is just a sentence written in these letters.
+              </p>
+              <p class="beat" data-beat="3">Your turn. Tap a move, or type <b class="mono">U D L R F B</b> (add Shift for prime).</p>
+            </div>
+            <div class="movepad" id="movepad" aria-label="Turn the cube">
+              <div class="movepad__grid"></div>
+              <button class="chip-btn movepad__reset" type="button" id="movepad-reset">Reset cube</button>
+            </div>
+            <div class="beat-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────── Methods -->
+      <section class="methods" id="methods" data-pose="methods">
+        <div class="methods__head">
+          <p class="eyebrow reveal">03 — Methods</p>
+          <h2 class="headline reveal" style="--d: 1">Three ways <em>home.</em></h2>
+          <p class="lede reveal" style="--d: 2">
+            Pick one. The cube scrambles itself, and each step plays out as you scroll. You can replay any step in slow motion.
+          </p>
+        </div>
+        <div class="method-cards" id="method-cards"></div>
+      </section>
+
+      <!-- ─────────────────────────────── Solve -->
+      <section class="solve" id="solve" aria-live="polite">
+        <div class="solve__head" id="solve-head"></div>
+        <ol class="steps" id="steps"></ol>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__inner">
+        <p class="footer__big">Solve<em>/</em>the&nbsp;Cube</p>
+        <p class="footer__meta">
+          Designed &amp; built by <span id="author"></span>. Rendered live with three.js and WebGL. Every solution is computed by
+          a method-accurate solver and verified move by move.
+        </p>
+        <p class="footer__small mono">Rubik’s Cube® is a trademark of Spin Master Ltd. This is an independent, non-commercial guide.</p>
+      </div>
+    </footer>
+
+    <div class="player" id="player" role="region" aria-label="Slow-motion player" hidden>
+      <div class="player__top">
+        <div class="player__title">
+          <span class="player__step" id="player-step"></span>
+          <span class="player__part" id="player-part"></span>
+        </div>
+        <button class="icon-btn" id="player-close" type="button" aria-label="Close player (Esc)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" /></svg>
+        </button>
+      </div>
+      <p class="player__note" id="player-note"></p>
+      <div class="player__chips" id="player-chips"></div>
+      <div class="player__controls">
+        <button class="icon-btn" id="player-prev" type="button" aria-label="Previous move (←)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 5 7.5 10l5 5" /></svg>
+        </button>
+        <button class="icon-btn icon-btn--main" id="player-toggle" type="button" aria-label="Play or pause (Space)">
+          <svg class="i-play" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10l8-5z" /></svg>
+          <svg class="i-pause" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5v10M13 5v10" /></svg>
+        </button>
+        <button class="icon-btn" id="player-next" type="button" aria-label="Next move (→)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7.5 5 5 5-5 5" /></svg>
+        </button>
+        <div class="player__progress" aria-hidden="true"><i id="player-bar"></i></div>
+        <span class="player__count mono" id="player-count"></span>
+        <div class="speed" role="group" aria-label="Playback speed">
+          <button type="button" data-speed="0.5">0.5×</button>
+          <button type="button" data-speed="1" class="is-on">1×</button>
+          <button type="button" data-speed="2">2×</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
