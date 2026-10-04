@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import type { Look } from './skins.ts';
 
 const BASE_DISTANCE = 14.2;
 
@@ -68,6 +69,9 @@ export class Stage {
   /** Screen shift of the cube as a fraction of the viewport (applied through a lens shift). */
   shift = new THREE.Vector2(0, 0);
   private accent = new THREE.Color('#f3f2ed');
+  /** Current and target studio look; eased in render() so skin changes cross-fade. */
+  private look: Look = { exposure: 1.02, env: 0.5, bloom: 0.16, bloomThreshold: 1.6, glow: 1, haze: 0 };
+  private lookTarget: Look = { ...this.look };
   private accentTarget = new THREE.Color('#f3f2ed');
 
   constructor(canvas: HTMLCanvasElement) {
@@ -136,6 +140,7 @@ export class Stage {
           uAspect: { value: 1 },
           uAccent: { value: this.accent },
           uGlow: { value: 1 },
+          uHaze: { value: 0 },
         },
         vertexShader: /* glsl */ `
           varying vec2 vUv;
@@ -146,6 +151,7 @@ export class Stage {
           uniform float uAspect;
           uniform vec3 uAccent;
           uniform float uGlow;
+          uniform float uHaze;
           varying vec2 vUv;
           void main() {
             vec2 p = vUv - uCenter;
@@ -154,6 +160,8 @@ export class Stage {
             vec3 col = vec3(0.0021, 0.0024, 0.0034);
             col += uAccent * uGlow * 0.028 * exp(-d * d * 5.5);
             col += vec3(0.008, 0.009, 0.012) * exp(-d * d * 1.4);
+            // Soft warm haze for the pastel skin.
+            col += vec3(0.05, 0.036, 0.04) * uHaze * exp(-d * d * 1.6);
             gl_FragColor = vec4(col, 1.0);
           }
         `,
@@ -252,6 +260,11 @@ export class Stage {
     return true;
   }
 
+  setLook(look: Look, immediate = false) {
+    this.lookTarget = { ...look };
+    if (immediate) this.look = { ...look };
+  }
+
   setAccent(hex: string) {
     this.accentTarget.set(hex);
   }
@@ -303,6 +316,15 @@ export class Stage {
 
   render(dt: number, time: number) {
     this.accent.lerp(this.accentTarget, 1 - Math.exp(-dt * 3));
+    const k = 1 - Math.exp(-dt * 2.5);
+    const L = this.look;
+    for (const key of Object.keys(L) as (keyof Look)[]) L[key] += (this.lookTarget[key] - L[key]) * k;
+    this.renderer.toneMappingExposure = L.exposure;
+    this.scene.environmentIntensity = L.env;
+    this.bloom.strength = L.bloom;
+    this.bloom.threshold = L.bloomThreshold;
+    this.bg.material.uniforms.uGlow.value = L.glow;
+    this.bg.material.uniforms.uHaze.value = L.haze;
     this.rim.color.copy(this.accent).lerp(new THREE.Color(1, 1, 1), 0.25);
     this.dust.material.uniforms.uTime.value = time;
     this.grade.uniforms.uTime.value = time;

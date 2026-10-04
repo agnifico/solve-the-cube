@@ -1,25 +1,16 @@
 /**
- * The 3D cube: 26 rounded cubies with bevelled, clear-coated tiles. Renders
+ * The 3D cube: 26 rounded, stickerless cubies, moulded in colour (per-face
+ * vertex colours on each body, dark plastic where no colour shows). Renders
  * the logical model with an optional partially-completed layer turn, plus the
  * exploded "anatomy" view, focus dimming and an assembly intro.
  */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { Cube, cubieStickers, pieceName, mulVec, type Color, type Move, type Vec3 } from '../cube/cube.ts';
+import { DEFAULT_SKIN, SKINS, type Skin, type SkinId } from './skins.ts';
 
 export const PITCH = 1.0;
 const BODY = 0.97;
-const TILE = 0.82;
-const TILE_R = 0.13;
-
-export const STICKER_HEX: Record<Color, string> = {
-  W: '#e9e9e3',
-  Y: '#ffcf00',
-  G: '#00ad4e',
-  B: '#0f4fff',
-  R: '#e11420',
-  O: '#ff6100',
-};
 
 const FACE_VEC: Record<string, Vec3> = {
   U: [0, 1, 0],
@@ -32,11 +23,10 @@ const FACE_VEC: Record<string, Vec3> = {
 
 type Kind = 'corner' | 'edge' | 'center';
 
-interface Tile {
-  mesh: THREE.Mesh;
-  mat: THREE.MeshPhysicalMaterial;
+/** A coloured face of a piece: an invisible anchor at its centre, for callouts. */
+interface Face {
+  anchor: THREE.Object3D;
   color: Color;
-  base: THREE.Color;
   homeNormal: Vec3;
 }
 
@@ -45,7 +35,9 @@ export interface PieceView {
   name: string;
   kind: Kind;
   group: THREE.Group;
-  tiles: Tile[];
+  body: THREE.Mesh;
+  mat: THREE.MeshPhysicalMaterial;
+  faces: Face[];
   dim: number;
   dimTarget: number;
   glow: number;
@@ -54,22 +46,10 @@ export interface PieceView {
   delay: number;
 }
 
-function roundedRect(size: number, r: number): THREE.Shape {
-  const h = size / 2;
-  const s = new THREE.Shape();
-  s.moveTo(-h + r, -h);
-  s.lineTo(h - r, -h);
-  s.quadraticCurveTo(h, -h, h, -h + r);
-  s.lineTo(h, h - r);
-  s.quadraticCurveTo(h, h, h - r, h);
-  s.lineTo(-h + r, h);
-  s.quadraticCurveTo(-h, h, -h, h - r);
-  s.lineTo(-h, -h + r);
-  s.quadraticCurveTo(-h, -h, -h + r, -h);
-  return s;
-}
-
-const DIM = new THREE.Color('#121317');
+const WHITE = new THREE.Color(1, 1, 1);
+/** Multiplier applied to the vertex colours when a piece is dimmed. */
+const DIM_MUL = new THREE.Color('#2a2b31');
+const AXIS_KEY = ['x', 'y', 'z'];
 const tmpV = new THREE.Vector3();
 const tmpN = new THREE.Vector3();
 const tmpC = new THREE.Vector3();
@@ -89,57 +69,41 @@ export class CubeView {
   explode = 0;
   /** 0 → scattered, 1 → assembled. */
   intro = 1;
+  skin: Skin = SKINS[DEFAULT_SKIN];
+  private coreMat: THREE.MeshPhysicalMaterial;
+  /** Re-apply dimming to every piece on the next update (after a re-skin). */
+  private repaint = false;
 
   constructor() {
     this.root.add(this.frame);
-    const bodyGeo = new RoundedBoxGeometry(BODY, BODY, BODY, 5, 0.1);
-    const tileGeo = new THREE.ExtrudeGeometry(roundedRect(TILE, TILE_R), {
-      depth: 0.016,
-      bevelEnabled: true,
-      bevelThickness: 0.012,
-      bevelSize: 0.014,
-      bevelSegments: 4,
-      curveSegments: 10,
-    });
-    tileGeo.translate(0, 0, 0.012);
-    const bodyMat = new THREE.MeshPhysicalMaterial({
-      color: '#0b0c0f',
-      roughness: 0.36,
-      metalness: 0,
-      clearcoat: 0.55,
-      clearcoatRoughness: 0.3,
-    });
+    const bodyGeo = new RoundedBoxGeometry(BODY, BODY, BODY, 6, 0.12);
 
     const model = new Cube();
     for (const c of model.cubies) {
       const nz = c.home.filter((v) => v !== 0).length;
       const kind: Kind = nz === 3 ? 'corner' : nz === 2 ? 'edge' : 'center';
       const group = new THREE.Group();
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      // Each piece gets its own body geometry so its faces can be coloured.
+      const geo = bodyGeo.clone();
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+      const mat = new THREE.MeshPhysicalMaterial({ vertexColors: true, metalness: 0, emissive: '#ffffff', emissiveIntensity: 0 });
+      // Tint emission (the focus pulse) by the vertex colour, so pieces glow in their own colours.
+      mat.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <emissivemap_fragment>',
+          '#include <emissivemap_fragment>\n#ifdef USE_COLOR\n  totalEmissiveRadiance *= vColor.rgb;\n#endif',
+        );
+      };
+      const body = new THREE.Mesh(geo, mat);
       body.castShadow = true;
       body.receiveShadow = true;
       group.add(body);
-      const tiles: Tile[] = [];
+      const faces: Face[] = [];
       for (const s of cubieStickers(c)) {
-        const base = new THREE.Color(STICKER_HEX[s.color]);
-        const mat = new THREE.MeshPhysicalMaterial({
-          color: base.clone(),
-          roughness: 0.34,
-          metalness: 0,
-          clearcoat: 0.7,
-          clearcoatRoughness: 0.2,
-          specularIntensity: 0.55,
-          emissive: base.clone(),
-          emissiveIntensity: 0,
-        });
-        const mesh = new THREE.Mesh(tileGeo, mat);
-        const n = new THREE.Vector3(...s.homeNormal);
-        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        mesh.position.copy(n).multiplyScalar(BODY / 2 - 0.016);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        group.add(mesh);
-        tiles.push({ mesh, mat, color: s.color, base, homeNormal: s.homeNormal });
+        const anchor = new THREE.Object3D();
+        anchor.position.set(...s.homeNormal).multiplyScalar(BODY / 2);
+        group.add(anchor);
+        faces.push({ anchor, color: s.color, homeNormal: s.homeNormal });
       }
       this.frame.add(group);
       const dir = new THREE.Vector3(...c.home).normalize();
@@ -148,7 +112,9 @@ export class CubeView {
         name: pieceName(c),
         kind,
         group,
-        tiles,
+        body,
+        mat,
+        faces,
         dim: 0,
         dimTarget: 0,
         glow: 0,
@@ -168,6 +134,7 @@ export class CubeView {
     // The mechanism core, only visible when exploded.
     this.core = new THREE.Group();
     const coreMat = new THREE.MeshPhysicalMaterial({ color: '#1b1d22', roughness: 0.3, metalness: 0.6, clearcoat: 0.4 });
+    this.coreMat = coreMat;
     const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.46, 48, 32), coreMat);
     this.core.add(sphere);
     for (let a = 0; a < 3; a++) {
@@ -190,6 +157,44 @@ export class CubeView {
     });
     this.core.visible = false;
     this.frame.add(this.core);
+    this.setSkin(this.skin.id);
+  }
+
+  /** Re-skin every piece: palette, plastic and core. */
+  setSkin(id: SkinId) {
+    const skin = SKINS[id];
+    this.skin = skin;
+    const pl = skin.plastic;
+    const inner = new THREE.Color(skin.inner);
+    const palette = Object.fromEntries(Object.entries(skin.palette).map(([k, v]) => [k, new THREE.Color(v)])) as Record<Color, THREE.Color>;
+    for (const p of this.pieces) {
+      const byFace = new Map(
+        p.faces.map((f) => {
+          const a = f.homeNormal.findIndex((v) => v !== 0);
+          return [AXIS_KEY[a] + (f.homeNormal[a] > 0 ? '+' : '-'), f.color] as const;
+        }),
+      );
+      // Colour each body vertex by the face its normal points at most.
+      const geo = p.body.geometry;
+      const nrm = geo.attributes.normal;
+      const out = geo.attributes.color as THREE.BufferAttribute;
+      for (let i = 0; i < nrm.count; i++) {
+        const v = [nrm.getX(i), nrm.getY(i), nrm.getZ(i)];
+        const a = [0, 1, 2].reduce((m, k) => (Math.abs(v[k]) > Math.abs(v[m]) ? k : m), 0);
+        const c = byFace.get(AXIS_KEY[a] + (v[a] > 0 ? '+' : '-'));
+        const col = c ? palette[c] : inner;
+        out.setXYZ(i, col.r, col.g, col.b);
+      }
+      out.needsUpdate = true;
+      p.mat.roughness = pl.roughness;
+      p.mat.clearcoat = pl.clearcoat;
+      p.mat.clearcoatRoughness = pl.clearcoatRoughness;
+      p.mat.sheen = pl.sheen;
+      p.mat.sheenColor.set('#ffffff');
+      p.mat.sheenRoughness = 0.6;
+    }
+    this.repaint = true;
+    this.coreMat.color.set(skin.core);
   }
 
   /**
@@ -249,20 +254,20 @@ export class CubeView {
       p.dim += (p.dimTarget - p.dim) * k;
       if (Math.abs(p.dim - p.dimTarget) < 0.002) p.dim = p.dimTarget;
       p.glow = p.glow > 0.004 ? p.glow * Math.exp(-dt * 2.6) : 0;
-      if (p.dim === prevDim && p.glow === prevGlow) continue;
-      for (const t of p.tiles) {
-        t.mat.color.copy(t.base).lerp(DIM, p.dim * 0.86);
-        // Dimmed pieces also lose most of their gloss so the lit ones pop.
-        t.mat.clearcoat = 0.7 - p.dim * 0.5;
-        t.mat.envMapIntensity = 1 - p.dim * 0.7;
-        t.mat.emissiveIntensity = p.glow * 0.22;
-      }
+      if (!this.repaint && p.dim === prevDim && p.glow === prevGlow) continue;
+      // Dimmed pieces darken and lose most of their gloss so the lit ones pop.
+      const m = p.mat;
+      m.color.copy(WHITE).lerp(DIM_MUL, p.dim * 0.86);
+      m.clearcoat = this.skin.plastic.clearcoat * (1 - p.dim * 0.7);
+      m.envMapIntensity = 1 - p.dim * 0.7;
+      m.emissiveIntensity = p.glow * 0.3;
     }
+    this.repaint = false;
   }
 
   /**
-   * World-space anchor on a piece: its sticker facing `face` if that sticker is
-   * visible, otherwise the sticker that best faces the camera.
+   * World-space anchor on a piece: its face pointing at `face` if that face is
+   * visible, otherwise the face that best faces the camera.
    */
   anchor(name: string, face: string | undefined, model: Cube, camera: THREE.Camera, out: THREE.Vector3): number | null {
     const p = this.byName.get(name);
@@ -272,11 +277,11 @@ export class CubeView {
     p.group.getWorldQuaternion(tmpQ);
     let bestScore = -Infinity;
     let facingBest = -1;
-    for (const t of p.tiles) {
-      tmpN.set(...t.homeNormal).applyQuaternion(tmpQ);
-      t.mesh.getWorldPosition(tmpV);
+    for (const f of p.faces) {
+      tmpN.set(...f.homeNormal).applyQuaternion(tmpQ);
+      f.anchor.getWorldPosition(tmpV);
       const facing = tmpN.dot(tmpC.copy(camera.position).sub(tmpV).normalize());
-      const logical = mulVec(c.rot, t.homeNormal);
+      const logical = mulVec(c.rot, f.homeNormal);
       const match = want && logical[0] === want[0] && logical[1] === want[1] && logical[2] === want[2];
       const score = facing + (match && facing > 0.12 ? 2 : 0);
       if (score > bestScore) {

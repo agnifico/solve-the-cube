@@ -1,6 +1,6 @@
 # Solve the Cube
 
-An immersive, scroll-driven 3D guide to solving the Rubik's Cube, built around a single real-time WebGL cube. Pick a method and the cube scrambles itself. As you scroll, it solves one step at a time. Callouts with white leader lines point at the pieces that matter, and any step can be replayed in slow motion with the notation lighting up move by move.
+An immersive 3D guide to solving the Rubik's Cube, built around a single real-time WebGL cube: learn the pieces, learn the notation, then solve it step by step in a sandbox. Callouts with white leader lines point at the pieces that matter, and any step can be replayed in slow motion with the notation lighting up move by move.
 
 **Three methods, 24 real scrambles, every move verified by simulation.**
 
@@ -23,13 +23,14 @@ npm run preview    # serve the production build
 
 ## What's on the page
 
-1. **Hero:** the cube assembles itself from 26 flying pieces, then idles under studio lighting.
-2. **Anatomy:** scroll to explode the cube around its core. Centres, edges and corners light up in turn, each with a callout.
-3. **Notation:** face letters are labelled on the cube. A live demo shows `R`, `R′` and `R2` with a curved 3D turn arrow. Then it's your turn: a move pad, or type `U D L R F B` (Shift for prime).
-4. **Methods:** three cards. Picking one (or a tab in the header) scrambles the cube.
-5. **The solve:** one card per step. When a card reaches the middle of the screen, the cube performs that step. The camera moves to the best angle (underneath for the white cross, top-down for OLL), the pieces that matter stay lit while the rest dim, the notation chips light up as each move plays, and callouts appear once the step lands.
-6. **Slow motion:** *Watch it slowly* replays a step one move at a time: the move name and a plain-English description, a turn arrow on the moving layer, pause, step back and forth, 0.5×–2× speed, and click-to-seek on any chip. Keyboard: `Space`, `←` `→`, `Esc`. When a person would rotate the cube (for example `y2` to reach a back slot), the camera turns instead, so the notation reads the way cubers write it.
-7. **Finish:** move count per step, plus how all three methods did on the *same* scramble, one click away.
+Four pages share one live cube, which flies between their compositions (hash routes, no reloads):
+
+1. **Home** (`#/`): a poster with the cube between the headline's two lines. Scroll down to "the course": three chapters with time estimates. Methods aren't named here; the visitor just starts.
+2. **01 Anatomy** (`#/anatomy`): a scroll story. The cube explodes around its core; centres, edges and corners light up in turn, with callouts and subtitle-style captions. A chapter index on the left jumps between beats.
+3. **02 Notation** (`#/notation`): face letters on the cube, an auto demo of `R`, `R′` and `R2` with a curved 3D turn arrow, then a move pad (or type `U D L R F B`, Shift for prime).
+4. **03 Solve** (`#/solve`): the sandbox, with two modes.
+   - **Learn to solve**: one slide per step, with Back / Next, arrow keys, and a step rail along the bottom. Each slide plays its step on the cube, shows the algorithms and this scramble's moves, and offers *Watch it slowly* (move-by-move player: `Space`, `←` `→`, `Esc`, 0.5×–2×). Beginner is the default; CFOP and ZZ sit in the method menu under "Once you can solve it", and the finish slide compares all three on the same scramble. Deep links: `#/solve/cfop`, `#/solve/zz`.
+   - **Free play** (`#/solve/play`): move pad, keyboard, or type a whole algorithm (`RUR'U'` works too). Scramble, undo and reset; your moves are written out in notation as you go.
 
 ## How the solutions are made
 
@@ -64,8 +65,8 @@ src/
     director.ts         Playhead over a move track (reversible, speed-adaptive)
     rig.ts              Turntable: scroll poses, slow-mo views, drag-to-spin
     turnArrow.ts        3D arrow showing which way a layer turns
-  ui/                   Callouts, solve cards, slow-motion player, formatting
-  app.ts                Scroll choreography and state
+  ui/                   Callouts, guided-solve slides (guideView), slow-motion player, formatting
+  app.ts                Routing, scroll choreography, sandbox state
 scripts/                Solver pipeline and verification
 ```
 
@@ -73,7 +74,8 @@ scripts/                Solver pipeline and verification
 
 - **Your name:** `src/config.ts`.
 - **Copy, colours, camera angles:** `src/content/methods.ts`. Each method has an accent colour that tints the UI, the rim light and the background glow.
-- **Cube look:** `STICKER_HEX` and the materials in `src/three/cubeView.ts`. Lighting and post-processing live in `src/three/stage.ts`.
+- **Cube skins:** `src/three/skins.ts`. Both are stickerless, coloured per face on the piece itself: *Speed* (default) is bright and glossy; *Macaron* is soft-touch matte pastel. Each skin carries its palette, plastic and a studio look (exposure, reflections, bloom, background haze), and the UI colour chips follow the palette. Visitors pick one from the header; the choice is remembered.
+- **Lighting and post-processing:** `src/three/stage.ts`.
 
 ## Notes
 

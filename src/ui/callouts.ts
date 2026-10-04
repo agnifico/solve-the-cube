@@ -50,6 +50,8 @@ export class Callouts {
   private stage: Stage;
   /** Screen x (px) left of which labels must not go (the text column). */
   safeLeft = 0;
+  /** Distance (px) from the bottom of the viewport that labels must stay above. */
+  safeBottom = 60;
   maxItems = 6;
 
   constructor(svg: SVGSVGElement, layer: HTMLElement, stage: Stage) {
@@ -182,7 +184,7 @@ export class Callouts {
       const col = alive.filter((i) => i.side === side).sort((a, b) => a.ay - b.ay);
       const ys = col.map((i) => i.ay);
       const top = 90;
-      const bottom = H - 60;
+      const bottom = H - this.safeBottom;
       for (let i = 0; i < col.length; i++) {
         const min = i === 0 ? top + col[i].h / 2 : ys[i - 1] + (col[i - 1].h + col[i].h) / 2 + 12;
         ys[i] = Math.max(ys[i], min);
