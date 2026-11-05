@@ -40,11 +40,23 @@ export class Rig {
     return this.stage.width < 900;
   }
 
+  /**
+   * Narrow screens: the free strip (CSS px) the cube should sit in, between the
+   * page's own UI. The cube scales with the pose's zoom, times `k`.
+   */
+  band: { top: number; bottom: number; k?: number } | null = null;
+
   /** Adapt a desktop pose to the current viewport. */
   adapt(p: Pose): Pose {
     if (!this.narrow) return p;
-    const portrait = this.stage.height > this.stage.width;
-    return { ...p, sx: 0, sy: portrait ? -0.2 : -0.08, zoom: p.zoom * (portrait ? 0.8 : 0.72) };
+    const w = this.stage.width;
+    const h = this.stage.height;
+    const b = this.band;
+    if (!b) return { ...p, sx: 0, zoom: p.zoom * (h > w ? 0.8 : 0.72) };
+    // Never squash below a usable size; if the strip is short, let it ride off-screen.
+    const top = Math.min(b.top, b.bottom - 140);
+    const r = Math.min(((b.bottom - top) / 2) * 0.86, w * 0.38) * (b.k ?? 1) * Math.min(1, p.zoom / 0.84);
+    return { ...p, sx: 0, sy: (top + b.bottom) / 2 / h - 0.5, zoom: this.stage.zoomForRadius(2.35 * this.view.root.scale.x, r) };
   }
 
   setPose(p: Pose, immediate = false) {

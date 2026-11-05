@@ -314,6 +314,12 @@ export class Stage {
     return (r / d) * f;
   }
 
+  /** Zoom at which a sphere of radius r at the origin spans `px` CSS px of radius. */
+  zoomForRadius(r: number, px: number): number {
+    const f = this.height / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2));
+    return (BASE_DISTANCE * Math.max(px, 1)) / (r * f);
+  }
+
   render(dt: number, time: number) {
     this.accent.lerp(this.accentTarget, 1 - Math.exp(-dt * 3));
     const k = 1 - Math.exp(-dt * 2.5);

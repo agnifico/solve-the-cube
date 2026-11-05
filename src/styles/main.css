@@ -2066,6 +2066,31 @@ body:not([data-mode='play']) .dock {
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.9);
 }
 
+/* Notation: the readout gets its own box in the bottom row, right of the caption. */
+.move-hud.is-docked {
+  top: auto;
+  left: calc(50% + 350px + 32px);
+  bottom: 6svh;
+  min-width: 180px;
+  padding: 18px 24px 16px;
+  gap: 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: rgba(8, 12, 14, 0.72);
+  backdrop-filter: blur(10px);
+}
+@media (min-width: 901px) and (max-width: 1500px) {
+  /* Not enough room beside a 700px caption: narrow the caption and share the row. */
+  body[data-page='notation'] .story__captions {
+    width: min(560px, calc(100% - 2 * var(--gutter) - 240px));
+    transform: translateX(calc(-50% - 120px));
+  }
+  .move-hud.is-docked {
+    left: auto;
+    right: calc(var(--gutter) + 24px);
+  }
+}
+
 /* ---------------------------------------------------------------- player */
 
 .player {
@@ -2333,6 +2358,30 @@ body:not([data-mode='play']) .dock {
   .story__scrub {
     display: none;
   }
+  /* Notation: the move readout becomes a slim strip above the caption card. */
+  .move-hud.is-docked {
+    left: 50%;
+    right: auto;
+    bottom: var(--dock-bottom, 30svh);
+    transform: translateX(-50%) !important;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+    padding: 8px 18px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .move-hud.is-docked .move-hud__token {
+    font-size: 30px;
+  }
+  /* Size the card to the active caption, not the tallest one. */
+  .caption:not(.is-on) {
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 20px;
+  }
   .story__captions {
     bottom: 3svh;
     padding: 20px 18px;
@@ -2417,6 +2466,27 @@ body:not([data-mode='play']) .dock {
   }
   .compare {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Small phones: tighten the nav so it fits on one row without clipping. */
+@media (max-width: 440px) {
+  .nav {
+    gap: 6px;
+  }
+  .nav__right {
+    gap: 6px;
+  }
+  .chapters__link {
+    padding: 0 9px;
+    font-size: 12.5px;
+  }
+  .skin-pick__btn {
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .skin-pick__btn > svg {
+    display: none;
   }
 }
 

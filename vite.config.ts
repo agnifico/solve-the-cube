@@ -7,5 +7,5 @@ export default defineConfig({
     assetsInlineLimit: 0,
     chunkSizeWarningLimit: 900,
   },
-  server: { host: true },
+  server: { host: 'localhost' },
 });

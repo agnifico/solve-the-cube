@@ -15,6 +15,7 @@ export class MoveHud {
   private el = document.getElementById('move-hud')!;
   private token = document.getElementById('move-hud-token')!;
   private desc = document.getElementById('move-hud-desc')!;
+  private nav = document.getElementById('nav')!;
   private current = '';
 
   show(tok: string) {
@@ -34,7 +35,21 @@ export class MoveHud {
     this.current = '';
   }
 
+  /** Notation page: sit in a fixed box beside the caption instead of over the cube. */
+  dock(on: boolean) {
+    if (this.el.classList.contains('is-docked') === on) return;
+    this.el.classList.toggle('is-docked', on);
+    if (on) this.el.style.transform = '';
+  }
+
+  setDockBottom(px: number) {
+    this.el.style.setProperty('--dock-bottom', `${px.toFixed(0)}px`);
+  }
+
   place(x: number, y: number) {
+    if (this.el.classList.contains('is-docked')) return;
+    // Never tuck under the fixed nav: keep the HUD's top edge below it.
+    y = Math.max(y, this.nav.getBoundingClientRect().bottom + 12 + this.el.offsetHeight);
     this.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -100%)`;
   }
 }

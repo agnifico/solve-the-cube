@@ -700,6 +700,42 @@ export class App {
     }
   }
 
+  /** Narrow screens: the free strip between this page's UI where the cube should sit. */
+  private narrowBand(vh: number): { top: number; bottom: number; k?: number } | null {
+    const rect = (sel: string) => document.querySelector(sel)?.getBoundingClientRect();
+    const nav = rect('#nav')?.bottom ?? 0;
+    const page = `.page[data-page="${this.page}"]`;
+    switch (this.page) {
+      case 'home': {
+        // Use the larger gap: above the hero text, or below it (above the course heading).
+        const kicker = rect('.poster__kicker')?.top ?? vh;
+        const hero = rect('.poster__start')?.bottom ?? 0;
+        const floor = Math.min(rect('.path__head')?.top ?? vh, vh) - 16;
+        const below = { top: Math.max(nav, hero) + 16, bottom: floor };
+        const above = { top: nav + 8, bottom: Math.min(kicker - 16, floor) };
+        const pick = above.bottom - above.top >= below.bottom - below.top ? above : below;
+        return { ...pick, k: 0.8 };
+      }
+      case 'anatomy':
+      case 'notation': {
+        const head = rect(`${page} .story__head`)?.bottom ?? nav;
+        let bottom = rect(`${page} .story__captions`)?.top ?? vh;
+        if (this.page === 'notation') {
+          // The move readout docks just above the caption card.
+          this.hud.setDockBottom(vh - bottom + 10);
+          bottom -= 74;
+        }
+        return { top: Math.max(nav, head) + 8, bottom: bottom - 8 };
+      }
+      case 'solve': {
+        const top = (rect('.modebar')?.bottom ?? nav) + 8;
+        const under = this.mode === 'play' ? '#dock' : this.player.isOpen ? '#player' : '#guide';
+        return { top, bottom: (rect(under)?.top ?? vh) - 8 };
+      }
+    }
+    return null;
+  }
+
   /** Keep callout labels clear of the page's own UI. */
   private safeArea() {
     const narrow = this.stage.width < 900;
@@ -746,6 +782,7 @@ export class App {
     const p = clamp01((y - s.top) / Math.max(1, s.height - vh));
     const story = this.page === 'anatomy' || this.page === 'notation';
 
+    this.rig.band = this.rig.narrow ? this.narrowBand(vh) : null;
     if (!this.player.isOpen) this.rig.setPose(this.poseFor(y, vh, p));
 
     // Explode for the anatomy chapter.
@@ -986,6 +1023,7 @@ export class App {
     this.stage.scene.updateMatrixWorld();
     const cube = this.rig.screen();
     this.callouts.update(dt, cube);
+    this.hud.dock(this.page === 'notation');
     this.hud.place(cube.x, cube.y - cube.r * 0.98);
     if (!this.director.idle) this.lastBusy = this.time;
     // Outside the player the move readout is transient: gone once the cube rests.
