@@ -1886,6 +1886,10 @@ body:not([data-mode='play']) .dock {
   gap: 8px;
 }
 .compare__item {
+  /* Buttons centre their content; pin it to the top so the cards line up. */
+  display: grid;
+  align-content: start;
+  justify-items: start;
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--line);
